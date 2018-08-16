@@ -3,7 +3,7 @@ from collections import Counter
 import glob
 import re
 
-punctuations = re.compile(r"([@#$%^&*()+={}\[\]|:;\"'<>~`'])")
+punctuations = re.compile(r"([,@#$%^&*()+={}\[\]|:;\"'<>~`'])")
 
 def tokenize():
     pass
@@ -42,8 +42,22 @@ def tokenize_into_words(sentences):
                     words[token] = 1
     return words
 
-def spellcheck():
-    pass
+def create_character_model(words, n_grams):
+    character_model = {}
+    for word in words:
+        word = word + '$'
+        print(word)
+        for i in range(len(word)-n_grams+1):
+            sliced = word[i:i+n_grams]
+            if sliced in character_model:
+                character_model[sliced] += 1
+            else:
+                character_model[sliced] = 1
+    return character_model
+
+def spellcheck(words, word_to_check):
+    character_model = create_character_model(words, 3)
+    import pdb; pdb.set_trace()
 
 def main():
     gutenberg_corpus = glob.glob('./Gutenberg/txt/*')
@@ -59,6 +73,7 @@ def main():
         word_dict = tokenize_into_words(sentence_arr)
         word_frequency = word_frequency + Counter(word_dict)
 
+        spellcheck(word_frequency.keys(), "harshit")
         # remove inverted commas in sentences of the form "[a-z]+\."
         #contents = re.sub(r"\"", r"", contents)
         #assert (len(re.findall(r"\".*\.\"", contents)) == 0)
