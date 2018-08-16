@@ -1,4 +1,5 @@
 from __future__ import division
+from collections import Counter
 import glob
 import re
 
@@ -14,10 +15,11 @@ def concat_delimiters(delimited_sentences):
             if element.strip() not in ['.', '?', '!']:
                 sentences.append(element.strip())
             else:
-                if sentences[-1][-1] in ['.', '?', '!']:
-                    sentences[-1] = sentences[-1] + element
-                else:
-                    sentences[-1] = sentences[-1] + " " + element
+                if sentences[-1]:
+                    if sentences[-1][-1] in ['.', '?', '!']:
+                        sentences[-1] = sentences[-1] + element
+                    else:
+                        sentences[-1] = sentences[-1] + " " + element
     return sentences
 
 def tokenize_into_sentences(text):
@@ -40,21 +42,27 @@ def tokenize_into_words(sentences):
                     words[token] = 1
     return words
 
+def spellcheck():
+    pass
+
 def main():
     gutenberg_corpus = glob.glob('./Gutenberg/txt/*')
+    word_frequency = Counter({})
+    sentences = []
+
     for book in gutenberg_corpus:
         fp = open(book, "r")
         contents = fp.read()
 
-        sentences = tokenize_into_sentences(contents)
-        word_dict = tokenize_into_words(sentences)
+        sentence_arr = tokenize_into_sentences(contents)
+        sentences += sentence_arr
+        word_dict = tokenize_into_words(sentence_arr)
+        word_frequency = word_frequency + Counter(word_dict)
 
         # remove inverted commas in sentences of the form "[a-z]+\."
         #contents = re.sub(r"\"", r"", contents)
         #assert (len(re.findall(r"\".*\.\"", contents)) == 0)
 
-        import pdb; pdb.set_trace()
-        break
-
 if __name__ == '__main__':
+    # change terms to lowercase or stem them
     main()
