@@ -24,7 +24,7 @@ def concat_delimiters(delimited_sentences):
 
 def tokenize_into_sentences(text):
     text = re.sub(r"[\r\n]", r" ", text)
-    sentences = concat_delimiters(re.split(r"([\.\?!])", text))
+    sentences = concat_delimiters(re.split(r"(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?)\s", text))
     return sentences
 
 def split_sentence(sentence):
@@ -68,6 +68,8 @@ def main():
         fp = open(book, "r")
         contents = fp.read()
 
+        print(tokenize_into_sentences("""Mr. Smith bought cheapsite.com for 1.5 million dollars, i.e. he paid a lot for it. Did he mind? Adam Jones Jr. thinks he didn't. In any case, this isn't true... Well, with a probability of .9 it isn't."""))
+        break
         sentence_arr = tokenize_into_sentences(contents)
         sentences += sentence_arr
         word_dict = tokenize_into_words(sentence_arr)
