@@ -134,14 +134,14 @@ def rate_grammar(models, sentence, n_grams):
         # multiple language_models
         model_number = 0
         while curr_probab == 0:
-            current_words = " ".join(current_words.split(" ")[1:])
-            if not current_words:
-                current_words = next_word
             try:
                 if models[model_number].get(current_words, None):
                     curr_probab = models[model_number][current_words].get(next_word, 0)
             except:
                 curr_probab = 1
+            current_words = " ".join(current_words.split(" ")[1:])
+            if not current_words:
+                current_words = next_word
             model_number += 1
         probablity *= curr_probab
 
