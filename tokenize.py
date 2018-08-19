@@ -56,19 +56,22 @@ def spellcheck(language_model, word_to_check, n_grams):
 
         probab_given_current = language_model[current]
         if probab_given_current:
-            probab_next = probab_given_current.get(next_char, probab_unkown)
+            probab_next = probab_given_current.get(next_char, 1/float(len(probab_given_current)))
         else:
             probab_next = probab_unkown
 
         if probab_next < mini[0]:
             mini = (probab_next, current, i+n_grams-1)
 
-    correct_char = max(language_model[mini[1]], key=language_model[mini[1]].get)
+    if language_model[mini[1]]:
+        correct_char = max(language_model[mini[1]], key=language_model[mini[1]].get)
+    else:
+        correct_char = '@'
 
     return word_to_check[:mini[2]] + correct_char + word_to_check[mini[2]+1:]
 
 def main():
-    gutenberg_corpus = glob.glob('./Gutenberg/txt/A*')
+    gutenberg_corpus = glob.glob('./Gutenberg/txt/*')
     word_frequency = Counter({})
     sentences = []
 
@@ -80,7 +83,7 @@ def main():
         sentences += sentence_arr
         word_dict = tokenize_into_words(sentence_arr)
         word_frequency = word_frequency + Counter(word_dict)
-    n_grams = 5
+    n_grams = 4
     model = create_character_model(word_frequency.keys(), n_grams)
 
     print(spellcheck(model, "intelligemt", n_grams))
