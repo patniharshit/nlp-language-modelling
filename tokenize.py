@@ -35,23 +35,40 @@ def create_character_model(words, n_grams):
 
     for key in character_model.keys():
         next_chars = character_model[key]
-        unique_chars = set(next_chars) # removes duplicated
+        unique_chars = set(next_chars)
         nb_chars = len(next_chars)
         probabilities_given_key = {}
         for unique_char in unique_chars:
             probabilities_given_key[unique_char] = \
                 float(next_chars.count(unique_char)) / nb_chars
         character_model[key] = probabilities_given_key
-    import pdb; pdb.set_trace()
     return character_model
 
-def spellcheck(words, word_to_check):
-    character_model = create_character_model(words, 3)
-    import pdb; pdb.set_trace()
-    return character_model
+def spellcheck(language_model, word_to_check, n_grams):
+    word_to_check = '*' + word_to_check
+    mini = (1, "", -1)
+    probab_unkown = 0.0001
+
+    for i in range(len(word_to_check)-n_grams+1):
+        sliced = word_to_check[i:i+n_grams]
+        current = sliced[:-1]
+        next_char = sliced[-1]
+
+        probab_given_current = language_model[current]
+        if probab_given_current:
+            probab_next = probab_given_current.get(next_char, probab_unkown)
+        else:
+            probab_next = probab_unkown
+
+        if probab_next < mini[0]:
+            mini = (probab_next, current, i+n_grams-1)
+
+    correct_char = max(language_model[mini[1]], key=language_model[mini[1]].get)
+
+    return word_to_check[:mini[2]] + correct_char + word_to_check[mini[2]+1:]
 
 def main():
-    gutenberg_corpus = glob.glob('./Gutenberg/txt/*')
+    gutenberg_corpus = glob.glob('./Gutenberg/txt/A*')
     word_frequency = Counter({})
     sentences = []
 
@@ -63,11 +80,11 @@ def main():
         sentences += sentence_arr
         word_dict = tokenize_into_words(sentence_arr)
         word_frequency = word_frequency + Counter(word_dict)
-        print(spellcheck(word_frequency.keys(), "harshit"))
-        # remove inverted commas in sentences of the form "[a-z]+\."
-        #contents = re.sub(r"\"", r"", contents)
-        #assert (len(re.findall(r"\".*\.\"", contents)) == 0)
-        break
+    n_grams = 5
+    model = create_character_model(word_frequency.keys(), n_grams)
+
+    print(spellcheck(model, "intelligemt", n_grams))
+    import pdb; pdb.set_trace()
 
 if __name__ == '__main__':
     # change terms to lowercase or stem them
