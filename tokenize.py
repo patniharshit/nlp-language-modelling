@@ -44,7 +44,7 @@ def create_character_model(words, n_grams):
         character_model[key] = probabilities_given_key
     return character_model
 
-def spellcheck(language_model, word_to_check, n_grams):
+def spellcheck(language_models, word_to_check, n_grams):
     word_to_check = '*' + word_to_check
     mini = (1, "", -1)
     probab_unkown = 0.0001
@@ -54,7 +54,7 @@ def spellcheck(language_model, word_to_check, n_grams):
         current = sliced[:-1]
         next_char = sliced[-1]
 
-        probab_given_current = language_model[current]
+        probab_given_current = language_models[0][current]
         if probab_given_current:
             probab_next = probab_given_current.get(next_char, 1/float(len(probab_given_current)))
         else:
@@ -63,15 +63,18 @@ def spellcheck(language_model, word_to_check, n_grams):
         if probab_next < mini[0]:
             mini = (probab_next, current, i+n_grams-1)
 
-    if language_model[mini[1]]:
-        correct_char = max(language_model[mini[1]], key=language_model[mini[1]].get)
-    else:
-        correct_char = '@'
+    correct_char = None
+    model_number = 0
+    given_chars = mini[1]
+    while correct_char is None:
+        correct_char = max(language_models[0][given_chars], key=language_models[0][given_chars].get)
+        given_chars = given_chars[1:]
+        model_number += 1
 
     return word_to_check[:mini[2]] + correct_char + word_to_check[mini[2]+1:]
 
 def main():
-    gutenberg_corpus = glob.glob('./Gutenberg/txt/*')
+    gutenberg_corpus = glob.glob('./Gutenberg/txt/A*')
     word_frequency = Counter({})
     sentences = []
 
@@ -84,9 +87,14 @@ def main():
         word_dict = tokenize_into_words(sentence_arr)
         word_frequency = word_frequency + Counter(word_dict)
     n_grams = 4
-    model = create_character_model(word_frequency.keys(), n_grams)
+    models = []
 
-    print(spellcheck(model, "intelligemt", n_grams))
+    for n in range(n_grams)[:0:-1]:
+        models.append(create_character_model(word_frequency.keys(), n_grams))
+
+    wrong_spellings = ["intelligemt", "apparantly", "calender", "definately", "dilemna", "prononciation", "schepule", "privilede", "occasionelly", "occasionalli", "occasiomally", "occassonally", "occasionatly"]
+    for wrong_spelling in wrong_spellings:
+        print(wrong_spelling, spellcheck(models, wrong_spelling, n_grams))
     import pdb; pdb.set_trace()
 
 if __name__ == '__main__':
