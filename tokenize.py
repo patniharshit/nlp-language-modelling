@@ -107,9 +107,11 @@ def language_model_for_grammar_detection(n_grams):
     for book in gutenberg_corpus:
         fp = open(book, "r")
         contents = fp.read()
-        words += map(lambda x: x.strip().lower(), filter(lambda x: x is not None and x.isalpha() and len(x)!=0,
-                re.split(r'(\b[^\s]+\b)((?<=\.\w).)?', contents)))
-
+        sentences = tokenize_into_sentences(contents)
+        for sentence in sentences:
+            words += ["*"] + map(lambda x: x.strip().lower(), filter(lambda x: x is not None and x.isalpha() and len(x)!=0,
+                    re.split(r'(\b[^\s]+\b)((?<=\.\w).)?', contents))) + ["$"]
+        break
     models = []
     print("Creating language models")
     for n in range(n_grams+1)[:0:-1]:
@@ -135,8 +137,11 @@ def rate_grammar(models, sentence, n_grams):
             current_words = " ".join(current_words.split(" ")[1:])
             if not current_words:
                 current_words = next_word
-            if models[model_number].get(current_words, None):
-                curr_probab = models[model_number][current_words].get(next_word, 0)
+            try:
+                if models[model_number].get(current_words, None):
+                    curr_probab = models[model_number][current_words].get(next_word, 0)
+            except:
+                curr_probab = 1
             model_number += 1
         probablity *= curr_probab
 
@@ -145,9 +150,14 @@ def rate_grammar(models, sentence, n_grams):
 def main_grammar():
     n_grams = 3
     models = language_model_for_grammar_detection(n_grams)
-    sentences = [["he","is","the","king","of","this","place"], ["he","is","the","king","of","these","place"]]
+    sentences = [
+            ["he","is","the","king","of","this","place"],
+            ["he","is", "of","these","place", "the","king"],
+            ["that", "lived",  "in", "halls" "i", "dreamt", "i", "marble"],
+            ['i', 'dreamt', 'that', 'I', 'lived', 'in', 'marble halls']
+        ]
     for sentence in sentences:
-        print(sentence, rate_grammar(models, sentence, n_grams))
+        print(sentence, rate_grammar(models, ["*"]+sentence+["$"], n_grams))
     import pdb; pdb.set_trace()
 
 def main_spelling():
