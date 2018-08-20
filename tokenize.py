@@ -8,44 +8,33 @@ def tokenize_into_sentences(text):
     return sentences
 
 
-def rate_grammar(models, sentence, n_grams):
+def deleted_interpolation(models, sentence, n_grams):
     probablity = 1
-
     for i in range(len(sentence)-n_grams+1):
         gram = sentence[i:i+n_grams]
         current_words = " ".join(gram[:-1])
         next_word = gram[-1]
         if not current_words:
             current_words = next_word
+
         curr_probab = 0
         # multiple language_models
-        model_number = 0
-        backoff_weight = 1
-        while curr_probab == 0:
+        lambda_param = [1, 0, 0] # assuming trigram model
+        for model_number, lambda_of_model in zip(range(len(models)), lambda_param):
             if models[model_number][0].get(current_words, None):
                 # divide by total number of words having that count
                 next_word_count = models[model_number][0][current_words].get(next_word, 0)
-                curr_probab = models[model_number][1][next_word_count]
+                curr_probab += lambda_of_model * models[model_number][1][next_word_count]
             else:
-                curr_probab = models[model_number][1][0]
+                # if ngram not found in vocab then assign it probab of unkown
+                curr_probab += lambda_of_model * models[model_number][1][0]
 
-            older_words = current_words
             current_words = " ".join(current_words.split(" ")[1:])
             if not current_words:
                 current_words = next_word
-
             model_number += 1
-            """
-            if model_number < len(models):
-                try:
-                    backoff_weight = (1-sum(models[model_number-1][older_words].values()))/(1-sum(models[model_number][current_words].values()))
-                except:
-                    import pdb; pdb.set_trace()
-            print(backoff_weight)
-            """
-        #rint(probablity)
+
         probablity *= curr_probab
-    #print("-----------------")
     return probablity
 
 
@@ -116,7 +105,7 @@ def create_language_model(words, n_grams):
 
 
 def language_model_for_grammar_detection(n_grams):
-    gutenberg_corpus = glob.glob('./Gutenberg/txt/B*')
+    gutenberg_corpus = glob.glob('./Gutenberg/txt/[B-C]*')
     print(len(gutenberg_corpus))
     words = []
 
@@ -159,8 +148,7 @@ def main_grammar():
             ['he', 'was', 'being', 'followed', 'at', 'the', 'police'],
         ]
     for sentence in sentences:
-        print(sentence, rate_grammar(models, ["*"]+sentence+["$"], n_grams))
-    import pdb; pdb.set_trace()
+        print(sentence, deleted_interpolation(models, ["*"]+sentence+["$"], n_grams))
 
 if __name__ == '__main__':
     main_grammar()
