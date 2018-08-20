@@ -8,33 +8,6 @@ def tokenize_into_sentences(text):
     return sentences
 
 
-def create_language_model(words, n_grams):
-    language_model = defaultdict(list)
-    print("creating inverted index")
-    for i in range(len(words)-n_grams+1):
-        sliced = words[i:i+n_grams]
-        gram = " ".join(sliced[:-1])
-        next_word = sliced[-1]
-        if not gram:
-            gram = next_word
-        if gram in language_model:
-            language_model[gram].append(next_word)
-        else:
-            language_model[gram] = [next_word]
-
-    print("computing probablities")
-    for key in language_model.keys():
-        next_words = language_model[key]
-        unique_words = set(next_words)
-        nb_words = len(next_words)
-        probabilities_given_key = {}
-        for unique_word in unique_words:
-            probabilities_given_key[unique_word] = \
-                float(next_words.count(unique_word)) / nb_words
-        language_model[key] = probabilities_given_key
-    return language_model
-
-
 def rate_grammar(models, sentence, n_grams):
     probablity = 1
 
@@ -73,6 +46,34 @@ def rate_grammar(models, sentence, n_grams):
     return probablity
 
 
+
+def create_language_model(words, n_grams):
+    language_model = defaultdict(list)
+    print("creating inverted index")
+    for i in range(len(words)-n_grams+1):
+        sliced = words[i:i+n_grams]
+        gram = " ".join(sliced[:-1])
+        next_word = sliced[-1]
+        if not gram:
+            gram = next_word
+        if gram in language_model:
+            language_model[gram].append(next_word)
+        else:
+            language_model[gram] = [next_word]
+
+    print("computing probablities")
+    for key in language_model.keys():
+        next_words = language_model[key]
+        unique_words = set(next_words)
+        nb_words = len(next_words)
+        probabilities_given_key = {}
+        for unique_word in unique_words:
+            probabilities_given_key[unique_word] = \
+                float(next_words.count(unique_word)) / nb_words
+        language_model[key] = probabilities_given_key
+    return language_model
+
+
 def language_model_for_grammar_detection(n_grams):
     gutenberg_corpus = glob.glob('./Gutenberg/txt/A*')
     words = []
@@ -93,6 +94,7 @@ def language_model_for_grammar_detection(n_grams):
                 words.append((tokens[i]).strip().lower())
                 i += 3
             words.append('$')
+        break
 
     models = []
     print("Creating language models")
@@ -109,8 +111,8 @@ def main_grammar():
     sentences = [
             ["he","is","the","king","of","this","place"],
             ["he","is", "of","these","place", "the","king"],
-            ["that", "lived",  "in", "halls" "i", "dreamt", "i", "marble"],
-            ['i', 'dreamt', 'that', 'i', 'lived', 'in', 'marble halls']
+            ["that", "lived",  "in", "halls", "i", "dreamt", "i", "marble"],
+            ['i', 'dreamt', 'that', 'i', 'lived', 'in', 'marble', 'halls']
         ]
     for sentence in sentences:
         print(sentence, rate_grammar(models, ["*"]+sentence+["$"], n_grams))
