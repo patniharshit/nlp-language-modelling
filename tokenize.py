@@ -43,27 +43,14 @@ def rate_grammar(models, sentence, n_grams):
                     import pdb; pdb.set_trace()
             print(backoff_weight)
             """
-        print(probablity)
+        #rint(probablity)
         probablity *= curr_probab
-    print("-----------------")
+    #print("-----------------")
     return probablity
 
 
 
-def create_language_model(words, n_grams):
-    language_model = defaultdict(list)
-    print("creating inverted index")
-    for i in range(len(words)-n_grams+1):
-        sliced = words[i:i+n_grams]
-        gram = " ".join(sliced[:-1])
-        next_word = sliced[-1]
-        if not gram:
-            gram = next_word
-        if gram in language_model:
-            language_model[gram].append(next_word)
-        else:
-            language_model[gram] = [next_word]
-
+def laplace_smoothing(language_model, n_grams, vocab_size):
     print("computing probablities")
     for key in language_model.keys():
         next_words = language_model[key]
@@ -72,31 +59,18 @@ def create_language_model(words, n_grams):
         probabilities_given_key = {}
         for unique_word in unique_words:
             probabilities_given_key[unique_word] = \
-                float(next_words.count(unique_word)) / nb_words
+                float(next_words.count(unique_word) + 1) / (nb_words + vocab_size)
         language_model[key] = probabilities_given_key
     return language_model
 
 
-def good_turing_smoothing(words, n_grams):
-    language_model = defaultdict(defaultdict)
-    print("creating inverted index")
-    for i in range(len(words)-n_grams+1):
-        sliced = words[i:i+n_grams]
-        gram = " ".join(sliced[:-1])
-        next_word = sliced[-1]
-        if not gram:
-            gram = next_word
-        if gram in language_model:
-            language_model[gram][next_word] = language_model[gram].get(next_word, 0) + 1
-        else:
-            language_model[gram] = { next_word : 1 }
-
+def good_turing_smoothing(language_model, n_grams, vocab_size):
+    print("computing probablities")
     cnc = {}
     for key in language_model.keys():
         for next_word in language_model[key].keys():
             cnc[language_model[key][next_word]] =  cnc.get(language_model[key][next_word], 0) + 1
 
-    vocab_size = len(set(words))
     total_seen = sum([cnc[key]*key for key in cnc.keys()])
     cnc[0] = pow(vocab_size, n_grams) - total_seen
 
@@ -118,11 +92,32 @@ def good_turing_smoothing(words, n_grams):
         pstar[key] = pstar[key] / float(cnc[key])
 
     #import pdb; pdb.set_trace()
-    print("computing probablities")
-    return language_model, pstar
+    return pstar
+
+
+def create_language_model(words, n_grams):
+    language_model = defaultdict(defaultdict)
+    print("creating inverted index")
+    for i in range(len(words)-n_grams+1):
+        sliced = words[i:i+n_grams]
+        gram = " ".join(sliced[:-1])
+        next_word = sliced[-1]
+        if not gram:
+            gram = next_word
+        if gram in language_model:
+            language_model[gram][next_word] = language_model[gram].get(next_word, 0) + 1
+        else:
+            language_model[gram] = { next_word : 1 }
+
+    vocab_size = len(set(words))
+
+    # return language_model, laplace_smoothing(language_model, n_grams, vocab_size)
+    return language_model, good_turing_smoothing(language_model, n_grams, vocab_size)
+
 
 def language_model_for_grammar_detection(n_grams):
-    gutenberg_corpus = glob.glob('./Gutenberg/txt/A*')
+    gutenberg_corpus = glob.glob('./Gutenberg/txt/B*')
+    print(len(gutenberg_corpus))
     words = []
 
     print("Tokenizing corpus")
@@ -131,9 +126,6 @@ def language_model_for_grammar_detection(n_grams):
         contents = fp.read()
         sentences = tokenize_into_sentences(contents)
         for sentence in sentences:
-            # make this efficient
-            # words += ["*"] + map(lambda x: x.strip().lower(), filter(lambda x: x is not None and x.isalpha() and len(x)!=0,
-            #        re.split(r'(\b[^\s]+\b)((?<=\.\w).)?', sentence))) + ["$"]
             tokens = re.split(r'(\b[^\s]+\b)((?<=\.\w).)?', sentence)
             words.append('*')
             i = 1
@@ -146,8 +138,7 @@ def language_model_for_grammar_detection(n_grams):
     print("Creating language models")
     for n in range(n_grams+1)[:0:-1]:
         print("create model", n)
-        models.append(good_turing_smoothing(words, n))
-        #models.append(create_language_model(words, n))
+        models.append(create_language_model(words, n))
         print("model created")
     return models
 
@@ -159,7 +150,13 @@ def main_grammar():
             ["he","is","the","king","of","this","place"],
             ["he","is", "of","these","place", "the","king"],
             ["that", "lived",  "in", "halls", "i", "dreamt", "i", "marble"],
-            ['i', 'dreamt', 'that', 'i', 'lived', 'in', 'marble', 'halls']
+            ['i', 'dreamt', 'that', 'i', 'lived', 'in', 'marble', 'halls'],
+            ['onto', 'chair', 'cat', 'up', 'black', 'the', 'jumped', 'the'],
+            ['the', 'black', 'cat', 'jumped', 'up', 'onto', 'the', 'chair'],
+            ['he', 'was', 'being', 'followed', 'by', 'the', 'police'],
+            ['he', 'is', 'being', 'followed', 'on', 'the', 'police'],
+            ['he', 'is', 'being', 'followed', 'by', 'the', 'police'],
+            ['he', 'was', 'being', 'followed', 'at', 'the', 'police'],
         ]
     for sentence in sentences:
         print(sentence, rate_grammar(models, ["*"]+sentence+["$"], n_grams))
