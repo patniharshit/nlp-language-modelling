@@ -22,11 +22,12 @@ def rate_grammar(models, sentence, n_grams):
         model_number = 0
         backoff_weight = 1
         while curr_probab == 0:
-            try:
-                if models[model_number].get(current_words, None):
-                    curr_probab = models[model_number][current_words].get(next_word, 0)
-            except:
-                curr_probab = 1
+            if models[model_number][0].get(current_words, None):
+                # divide by total number of words having that count
+                next_word_count = models[model_number][0][current_words].get(next_word, 0)
+                curr_probab = models[model_number][1][next_word_count]
+            else:
+                curr_probab = models[model_number][1][0]
 
             older_words = current_words
             current_words = " ".join(current_words.split(" ")[1:])
@@ -42,7 +43,9 @@ def rate_grammar(models, sentence, n_grams):
                     import pdb; pdb.set_trace()
             print(backoff_weight)
             """
+        print(probablity)
         probablity *= curr_probab
+    print("-----------------")
     return probablity
 
 
@@ -74,6 +77,50 @@ def create_language_model(words, n_grams):
     return language_model
 
 
+def good_turing_smoothing(words, n_grams):
+    language_model = defaultdict(defaultdict)
+    print("creating inverted index")
+    for i in range(len(words)-n_grams+1):
+        sliced = words[i:i+n_grams]
+        gram = " ".join(sliced[:-1])
+        next_word = sliced[-1]
+        if not gram:
+            gram = next_word
+        if gram in language_model:
+            language_model[gram][next_word] = language_model[gram].get(next_word, 0) + 1
+        else:
+            language_model[gram] = { next_word : 1 }
+
+    cnc = {}
+    for key in language_model.keys():
+        for next_word in language_model[key].keys():
+            cnc[language_model[key][next_word]] =  cnc.get(language_model[key][next_word], 0) + 1
+
+    vocab_size = len(set(words))
+    total_seen = sum([cnc[key]*key for key in cnc.keys()])
+    cnc[0] = pow(vocab_size, n_grams) - total_seen
+
+    cstar = {}
+    cnc_keys = sorted(cnc.keys())
+    for i in range(len(cnc_keys[:-1])):
+        cstar[cnc_keys[i]] = (cnc_keys[i+1] * cnc[cnc_keys[i+1]]) / float(cnc[cnc_keys[i]])
+
+    pstar = {}
+    # pstar  here is the total probablity mass assigned to all the grams having same count
+    for i in range(len(cnc_keys[:-1])):
+        pstar[cnc_keys[i]] = (cstar[cnc_keys[i]] * cnc[cnc_keys[i]]) / float(total_seen)
+
+    # probablity for highest count item
+    pstar[cnc_keys[-1]] = cnc[cnc_keys[-1]] / float(total_seen)
+
+    # calculate probablity of one the grams having the count as key
+    for key in cnc_keys:
+        pstar[key] = pstar[key] / float(cnc[key])
+
+    #import pdb; pdb.set_trace()
+    print("computing probablities")
+    return language_model, pstar
+
 def language_model_for_grammar_detection(n_grams):
     gutenberg_corpus = glob.glob('./Gutenberg/txt/A*')
     words = []
@@ -94,13 +141,13 @@ def language_model_for_grammar_detection(n_grams):
                 words.append((tokens[i]).strip().lower())
                 i += 3
             words.append('$')
-        break
 
     models = []
     print("Creating language models")
     for n in range(n_grams+1)[:0:-1]:
         print("create model", n)
-        models.append(create_language_model(words, n))
+        models.append(good_turing_smoothing(words, n))
+        #models.append(create_language_model(words, n))
         print("model created")
     return models
 
