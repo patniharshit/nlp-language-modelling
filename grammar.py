@@ -93,6 +93,8 @@ def create_language_model(words, n_grams):
         unique_words = set(next_words)
         nb_words = len(next_words)
         probabilities_given_key = {}
+        if key.split(" ")[0] == '*':
+            import pdb; pdb.set_trace()
         for unique_word in unique_words:
             probabilities_given_key[unique_word] = \
                 float(next_words.count(unique_word)) / nb_words
@@ -133,16 +135,26 @@ def rate_grammar(models, sentence, n_grams):
         curr_probab = 0
         # multiple language_models
         model_number = 0
+        backoff_weight = 1
         while curr_probab == 0:
             try:
                 if models[model_number].get(current_words, None):
                     curr_probab = models[model_number][current_words].get(next_word, 0)
             except:
                 curr_probab = 1
+
+            older_words = current_words
             current_words = " ".join(current_words.split(" ")[1:])
             if not current_words:
                 current_words = next_word
+
             model_number += 1
+            if model_number < len(models):
+                try:
+                    backoff_weight = (1-sum(models[model_number-1][older_words].values()))/(1-sum(models[model_number][current_words].values()))
+                except:
+                    import pdb; pdb.set_trace()
+            print(backoff_weight)
         probablity *= curr_probab
 
     return probablity
